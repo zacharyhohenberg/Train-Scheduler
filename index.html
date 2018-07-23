@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Train Scheduler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B" crossorigin="anonymous">
+
+    <!-- moment link -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+    <!-- jQuery Link -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    
+
+    <!-- Firebase Reference -->
+    <script src="https://www.gstatic.com/firebasejs/5.3.0/firebase.js"></script>
+    
+</head>
+<body>
+    <!-- Employee Tracker -->
+  <div class="container">
+
+    <!-- Jumbotron -->
+    <div class="jumbotron" style="background-color: blue; color: white">
+      <h1 class="text-center">Train Scheduler</h1>
+    </div>
+
+    <div class="row">
+      <div class="col-md-12">
+        <!-- Add Employee  -->
+        <div class="card mb-4 p-4">
+          <div class="card-body">
+            <h3 class="card-title">Add Train</h3>
+            <!-- Entry Form -->
+            <form>
+              <div class="form-group row">
+                <label for="employee-name-input">Train Name</label>
+                <input class="form-control" id="train-name-input" placeholder="Firebase Express" type="text">
+              </div>
+              <div class="form-group row">
+                <label for="role-input">Destination</label>
+                <input class="form-control" id="destination-input" placeholder="Gotham City" type="text">
+              </div>
+              <div class="form-group row">
+                <label for="start-input">First Train Time (military time)</label>
+                <input class="form-control" id="start-input" placeholder="12:00" type="text">
+              </div>
+              <div class="form-group row">
+                <label for="rate-input">Frequency (min)</label>
+                <input class="form-control" id="rate-input" placeholder="10" type="text">
+              </div>
+              <button class="btn btn-primary float-right" id="add-employee-btn">Submit</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+
+      <div class="col-md-12">
+
+        <!-- Current Employees-->
+        <div class="card mb-4">
+          <div class="card-body">
+            <h3 class="card-title">Train Schedule</h3>
+            <table class="table table-sm table-hover" id='employee-table'>
+              <thead>
+                <tr>
+                  <th scope="col">Train Name</th>
+                  <th scope="col">Destination</th>
+                  <th scope="col">First Train</th>
+                  <th scope="col">Frequency</th>
+                  <th scope="col">Next Train</th>
+                  <th scope="col">Minutes Away</th>
+                </tr>
+              </thead>
+              <tbody>
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>    
+
+
+    <script>
+
+    var config = {
+    apiKey: "AIzaSyBFW17OvbBqFmCOUYMibnG11ExScPLV8X0",
+    authDomain: "first-project-3e53a.firebaseapp.com",
+    databaseURL: "https://first-project-3e53a.firebaseio.com",
+    projectId: "first-project-3e53a",
+    storageBucket: "first-project-3e53a.appspot.com",
+    messagingSenderId: "564969854526"
+  };
+  firebase.initializeApp(config);
+
+	 var database = firebase.database();
+
+    $("#add-employee-btn").on("click",function(){
+
+        event.preventDefault();
+
+        var tempName = $("#train-name-input").val();
+        var tempDestination = $("#destination-input").val();
+        var tempStart = $("#start-input").val();
+        var tempRate = $("#rate-input").val();
+
+        //.push uses a timestamp key to generate their unique key for each node added
+        //
+        database.ref().push({
+            name: tempName,
+            destination: tempDestination,
+            start: tempStart,
+            rate: tempRate,
+            
+
+
+        });
+
+
+        
+
+
+
+    });
+
+    
+    //everytime the page reloads i need the columns next train and minutes away to be updated
+    //need a for loop that goes through every node in the database
+    database.ref().on("value", function(snapshot){
+
+        event.preventDefault();
+
+        //the table will be re-created everytime a train is added or the page is refereshed in order to 
+        //update time remaining and next train 
+        $("tbody").empty();
+
+        snapshot.forEach(function(data){
+
+           var tFrequency = data.val().rate;
+
+            var firstTimeConverted = moment(data.val().start, "HH:mm").subtract(1, "years");
+            console.log(firstTimeConverted);
+
+            // Current Time
+            var currentTime = moment();
+            console.log("CURRENT TIME: " + moment(currentTime).format("hh:mm"));
+
+            // Difference between the times
+            var diffTime = moment().diff(moment(firstTimeConverted), "minutes");
+            console.log("DIFFERENCE IN TIME: " + diffTime);
+
+            // Time apart (remainder)
+            var tRemainder = diffTime % tFrequency;
+            console.log(tRemainder);
+
+            // Minute Until Train
+            var tMinutesTillTrain = tFrequency - tRemainder;
+            console.log("MINUTES TILL TRAIN: " + tMinutesTillTrain);
+
+            // Next Train
+            var nextTrain = moment().add(tMinutesTillTrain, "minutes");
+            console.log("ARRIVAL TIME: " + moment(nextTrain).format("hh:mm"));
+
+            var row = $("<tr>");
+            var newEntry1 = $('<th scope="col">' + data.val().name +  '</th>');
+            var newEntry2 = $('<th scope="col">' + data.val().destination +  '</th>');
+            var newEntry3 = $('<th scope="col">' + data.val().start +  '</th>');
+            var newEntry4 = $('<th scope="col">Every ' + data.val().rate + ' min</th>')
+            var newEntry5 = $('<th scope="col">' + moment(nextTrain).format("HH:mm") + '</th>');
+            var newEntry6 = $('<th scope="col">' + tMinutesTillTrain +  ' minutes until next train arrives</th>');
+        
+        
+        
+
+     
+            row.append(newEntry1);
+            row.append(newEntry2);
+            row.append(newEntry3);
+            row.append(newEntry4);
+            row.append(newEntry5);
+            row.append(newEntry6);
+            $("tbody").append(row);
+
+        });
+
+
+
+
+    });
+    
+    </script>
+</body>
+</html>
+
+
